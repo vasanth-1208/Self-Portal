@@ -26,6 +26,27 @@ const getCompletedSkillCount = (row: StudentRow, skillHeaders: string[]) =>
     0
   );
 
+const SUMMARY_DETAIL_FIELDS = [
+  "Names",
+  "Position",
+  "Phone Number",
+  "Special Lab Name",
+  "Email",
+  "Roll Number",
+  "Reward Points",
+  "Activity Points",
+  "Github",
+  "Linkedin",
+  "Primary Skill 1",
+  "Primary Skill 2",
+  "Project domain",
+  "Secondary Skill 1",
+  "Secondary Skill 2",
+  "Specialized skill 1",
+  "Specialized skill 2",
+  "X (Twitter)"
+] as const;
+
 export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
   const [isPending, startTransition] = useTransition();
   const [newSkill, setNewSkill] = useState("");
@@ -44,6 +65,24 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
       setExpandedRowId(null);
     }
   }, [isPersonalView]);
+
+  const sortedRows = rows.slice().sort((left, right) => {
+    const positionCompare = `${left.values.Position || ""}`.localeCompare(
+      `${right.values.Position || ""}`
+    );
+
+    if (positionCompare !== 0) {
+      return positionCompare;
+    }
+
+    return `${left.values.Names || ""}`.localeCompare(`${right.values.Names || ""}`);
+  });
+
+  const summaryColumns = (() => {
+    const base = SUMMARY_DETAIL_FIELDS.slice() as string[];
+    const extras = dataset.detailHeaders.filter((header) => !base.includes(header));
+    return [...base, ...extras];
+  })();
 
   const handleCellSave = (row: StudentRow, header: string, value: string) => {
     startTransition(async () => {
@@ -194,7 +233,7 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
 
       <div className="p-4 md:p-5">
         <div className="space-y-5">
-          {rows.map((row, rowIndex) => {
+          {sortedRows.map((row, rowIndex) => {
             const isOwnRow = dataset.userEmail === row.values.Email?.toLowerCase();
             const visibleSkills = dataset.skillHeaders;
             const completedSkillCount = getCompletedSkillCount(row, dataset.skillHeaders);
@@ -255,58 +294,62 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3">
-                      <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
-                        Total Skills Completed
-                      </p>
-                      <span className="block text-sm font-semibold text-emerald-800">
-                        {completedSkillCount}
-                      </span>
-                    </div>
-                    {[...DETAIL_FIELDS, ...dataset.detailHeaders].map((field) => {
-                      const value = row.values[field] || "";
-                      const isCustomDetail = dataset.detailHeaders.includes(field);
-                      const fieldEditable =
-                        (dataset.teamViewLoaded &&
-                          (dataset.role === "super_admin" || dataset.role === "admin") &&
-                          field !== "Reward Points") ||
-                        (isOwnRow &&
-                          ((dataset.role === "member" && field === "Activity Points") ||
-                            dataset.detailHeaders.includes(field)));
+                  {isExpanded ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-3 py-3">
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                          Total Skills Completed
+                        </p>
+                        <span className="block text-sm font-semibold text-emerald-800">
+                          {completedSkillCount}
+                        </span>
+                      </div>
+                      {[...DETAIL_FIELDS, ...dataset.detailHeaders].map((field) => {
+                        const value = row.values[field] || "";
+                        const isCustomDetail = dataset.detailHeaders.includes(field);
+                        const fieldEditable =
+                          (dataset.teamViewLoaded &&
+                            (dataset.role === "super_admin" || dataset.role === "admin") &&
+                            field !== "Reward Points") ||
+                          (isOwnRow &&
+                            ((dataset.role === "member" && field === "Activity Points") ||
+                              dataset.detailHeaders.includes(field)));
 
-                      return (
-                        <div
-                          key={`${row.id}-${field}`}
-                          className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
-                        >
-                          <div className="mb-1 flex items-start justify-between gap-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                              {field}
-                            </p>
-                            {dataset.teamViewLoaded && dataset.role === "super_admin" && isCustomDetail ? (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteDetail(field)}
-                                className="shrink-0 rounded-full border border-rose-200 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-rose-600 transition hover:bg-rose-50"
-                              >
-                                Delete
-                              </button>
-                            ) : null}
+                        return (
+                          <div
+                            key={`${row.id}-${field}`}
+                            className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3"
+                          >
+                            <div className="mb-1 flex items-start justify-between gap-2">
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                                {field}
+                              </p>
+                              {dataset.teamViewLoaded &&
+                              dataset.role === "super_admin" &&
+                              isCustomDetail ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteDetail(field)}
+                                  className="shrink-0 rounded-full border border-rose-200 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-rose-600 transition hover:bg-rose-50"
+                                >
+                                  Delete
+                                </button>
+                              ) : null}
+                            </div>
+                            {fieldEditable ? (
+                              <EditableCell
+                                value={value}
+                                disabled={isPending}
+                                onSave={(nextValue) => handleCellSave(row, field, nextValue)}
+                              />
+                            ) : (
+                              <span className="block text-sm text-slate-700">{value || "-"}</span>
+                            )}
                           </div>
-                          {fieldEditable ? (
-                            <EditableCell
-                              value={value}
-                              disabled={isPending}
-                              onSave={(nextValue) => handleCellSave(row, field, nextValue)}
-                            />
-                          ) : (
-                            <span className="block text-sm text-slate-700">{value || "-"}</span>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
 
                 {isExpanded ? (
@@ -387,6 +430,63 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
             );
           })}
         </div>
+
+        {!isPersonalView ? (
+          <section className="overflow-hidden rounded-[28px] border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-4 md:px-5">
+              <h3 className="text-base font-semibold text-slate-900">Team Details</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Includes total skills completed and all detail columns.
+              </p>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+                <thead className="sticky top-0 bg-white">
+                  <tr>
+                    <th className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 font-medium text-slate-700">
+                      #
+                    </th>
+                    <th className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 font-medium text-slate-700">
+                      Total Skills Completed
+                    </th>
+                    {summaryColumns.map((header) => (
+                      <th
+                        key={header}
+                        className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 font-medium text-slate-700"
+                      >
+                        {header}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedRows.map((row, index) => {
+                    const totalCompleted = getCompletedSkillCount(row, dataset.skillHeaders);
+                    return (
+                      <tr key={`summary-${row.id}`} className="odd:bg-white even:bg-slate-50/50">
+                        <td className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 text-slate-600">
+                          {index + 1}
+                        </td>
+                        <td className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 font-medium text-slate-800">
+                          {totalCompleted}
+                        </td>
+                        {summaryColumns.map((header) => (
+                          <td
+                            key={`${row.id}-${header}`}
+                            className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 text-slate-700"
+                          >
+                            {row.values[header] || "-"}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
       </div>
     </section>
   );

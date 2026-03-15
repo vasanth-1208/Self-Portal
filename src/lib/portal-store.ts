@@ -40,6 +40,19 @@ const REWARD_POINTS_CSV_URL =
 
 const studentSort = { "values.Names": 1, email: 1 } as const;
 
+const DEFAULT_DETAIL_HEADERS = [
+  "Github",
+  "Linkedin",
+  "Primary Skill 1",
+  "Primary Skill 2",
+  "Project domain",
+  "Secondary Skill 1",
+  "Secondary Skill 2",
+  "Specialized skill 1",
+  "Specialized skill 2",
+  "X (Twitter)"
+];
+
 const getCollections = async () => {
   const db = await getDatabase();
 
@@ -58,7 +71,7 @@ const ensureSettings = async () => {
     {
       $setOnInsert: {
         key: "portal",
-        detailHeaders: [],
+        detailHeaders: DEFAULT_DETAIL_HEADERS.slice(),
         skillHeaders: []
       }
     },
@@ -66,8 +79,41 @@ const ensureSettings = async () => {
   );
 };
 
-const getPortalColumns = async () => {
+const ensureDefaultDetailColumns = async () => {
   await ensureSettings();
+  const { settings, students } = await getCollections();
+  const document = await settings.findOne({ key: "portal" });
+
+  const current = new Set((document?.detailHeaders ?? []).map((header) => `${header}`));
+  const missing = DEFAULT_DETAIL_HEADERS.filter((header) => !current.has(header));
+
+  if (missing.length === 0) {
+    return;
+  }
+
+  await settings.updateOne(
+    { key: "portal" },
+    {
+      $addToSet: {
+        detailHeaders: { $each: missing }
+      }
+    }
+  );
+
+  for (const header of missing) {
+    await students.updateMany(
+      { [`values.${header}`]: { $exists: false } },
+      {
+        $set: {
+          [`values.${header}`]: ""
+        }
+      }
+    );
+  }
+};
+
+const getPortalColumns = async () => {
+  await ensureDefaultDetailColumns();
   const { settings } = await getCollections();
   const document = await settings.findOne({ key: "portal" });
 
