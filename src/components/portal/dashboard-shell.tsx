@@ -6,6 +6,7 @@ import { signOutUser } from "@/app/actions/auth-actions";
 import { SpreadsheetTable } from "@/components/portal/spreadsheet-table";
 import { MemberDirectory } from "@/components/portal/member-directory";
 import { AdminPanel } from "@/components/portal/admin-panel";
+import { LogoMark } from "@/components/portal/logo-mark";
 
 type Props = {
   initialDataset: PortalDataset;
@@ -94,9 +95,12 @@ export function DashboardShell({ initialDataset, userName }: Props) {
         <section className="rounded-[28px] border border-white/70 bg-white/90 px-6 py-5 shadow-sheet backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2 text-center lg:text-left">
-              <h1 className="text-3xl font-semibold tracking-tight text-portal-ink">
-                A#100005 Portal
-              </h1>
+              <div className="flex items-center justify-center gap-3 lg:justify-start">
+                <LogoMark size={42} />
+                <h1 className="text-3xl font-semibold tracking-tight text-portal-ink">
+                  A#100005 Portal
+                </h1>
+              </div>
               <p className="text-sm text-slate-600">
                 Signed in as <span className="font-medium text-portal-ink">{userName || dataset.userEmail}</span>
                 {" · "}

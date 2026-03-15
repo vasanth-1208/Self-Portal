@@ -30,12 +30,20 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
   const [isPending, startTransition] = useTransition();
   const [newSkill, setNewSkill] = useState("");
   const [newDetail, setNewDetail] = useState("");
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
   const isPersonalView = dataset.role === "member" || !dataset.teamViewLoaded;
   const rows = isPersonalView ? (dataset.ownRow ? [dataset.ownRow] : []) : dataset.students;
   const canManageSkills =
     dataset.teamViewLoaded && (dataset.role === "admin" || dataset.role === "super_admin");
   const canManageDetails = dataset.teamViewLoaded && dataset.role === "super_admin";
   const title = isPersonalView ? "My Skill Progress Tracker" : "Student Skill Progress Tracker";
+
+  useEffect(() => {
+    // Team view behaves like an accordion: start collapsed when switching into it.
+    if (!isPersonalView) {
+      setExpandedRowId(null);
+    }
+  }, [isPersonalView]);
 
   const handleCellSave = (row: StudentRow, header: string, value: string) => {
     startTransition(async () => {
@@ -190,6 +198,8 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
             const isOwnRow = dataset.userEmail === row.values.Email?.toLowerCase();
             const visibleSkills = dataset.skillHeaders;
             const completedSkillCount = getCompletedSkillCount(row, dataset.skillHeaders);
+            const isAccordion = !isPersonalView;
+            const isExpanded = !isAccordion || expandedRowId === row.id;
 
             return (
               <article
@@ -212,6 +222,27 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
+                      {!isPersonalView ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExpandedRowId((current) => (current === row.id ? null : row.id))
+                          }
+                          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800 transition hover:bg-slate-50"
+                          aria-expanded={isExpanded}
+                          aria-controls={`skills-${row.id}`}
+                        >
+                          <span
+                            className={`text-base leading-none transition-transform ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                            aria-hidden="true"
+                          >
+                            ▼
+                          </span>
+                          {isExpanded ? "Hide skills" : "Show skills"}
+                        </button>
+                      ) : null}
                       {dataset.role === "super_admin" && dataset.teamViewLoaded && (
                         <button
                           type="button"
@@ -278,74 +309,80 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                   </div>
                 </div>
 
-                <div className="px-4 py-4 md:px-5">
-                  <div className="mb-3 flex items-center justify-between">
-                    <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      Skills
-                    </h4>
-                    <span className="text-xs text-slate-400">{visibleSkills.length} total</span>
-                  </div>
+                {isExpanded ? (
+                  <div id={`skills-${row.id}`} className="px-4 py-4 md:px-5">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">
+                        Skills
+                      </h4>
+                      <span className="text-xs text-slate-400">{visibleSkills.length} total</span>
+                    </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-                    {visibleSkills.map((header) => {
-                      const value = row.values[header] || "";
-                      const checked = isSkillCompleted(value);
-                      const targeted = row.targetSkills.includes(header);
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+                      {visibleSkills.map((header) => {
+                        const value = row.values[header] || "";
+                        const checked = isSkillCompleted(value);
+                        const targeted = row.targetSkills.includes(header);
 
-                      return (
-                        <div
-                          key={`${row.id}-${header}`}
-                          className={`rounded-2xl border bg-white p-3 shadow-sm ${
-                            targeted ? "border-amber-300 ring-1 ring-amber-200" : "border-slate-200"
-                          }`}
-                        >
-                          <div className="mb-3 flex min-h-14 items-start justify-between gap-2">
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium leading-5 text-slate-800">{header}</p>
-                              {targeted ? (
-                                <span className="inline-flex rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-                                  Target
-                                </span>
-                              ) : null}
+                        return (
+                          <div
+                            key={`${row.id}-${header}`}
+                            className={`rounded-2xl border bg-white p-3 shadow-sm ${
+                              targeted
+                                ? "border-amber-300 ring-1 ring-amber-200"
+                                : "border-slate-200"
+                            }`}
+                          >
+                            <div className="mb-3 flex min-h-14 items-start justify-between gap-2">
+                              <div className="space-y-2">
+                                <p className="text-sm font-medium leading-5 text-slate-800">
+                                  {header}
+                                </p>
+                                {targeted ? (
+                                  <span className="inline-flex rounded-full bg-amber-50 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-amber-700">
+                                    Target
+                                  </span>
+                                ) : null}
+                              </div>
+                              {canManageSkills && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSkill(header)}
+                                  className="shrink-0 rounded-full border border-rose-200 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-600 transition hover:bg-rose-50"
+                                >
+                                  Delete
+                                </button>
+                              )}
                             </div>
+
                             {canManageSkills && (
                               <button
                                 type="button"
-                                onClick={() => handleDeleteSkill(header)}
-                                className="shrink-0 rounded-full border border-rose-200 px-2 py-1 text-[10px] uppercase tracking-[0.18em] text-rose-600 transition hover:bg-rose-50"
+                                disabled={isPending}
+                                onClick={() => handleTargetToggle(row, header, !targeted)}
+                                className={`mb-3 inline-flex w-full items-center justify-center rounded-xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
+                                  targeted
+                                    ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                                    : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+                                }`}
                               >
-                                Delete
+                                {targeted ? "Remove target" : "Mark target"}
                               </button>
                             )}
-                          </div>
 
-                          {canManageSkills && (
-                            <button
-                              type="button"
+                            <SkillToggleCell
+                              checked={checked}
                               disabled={isPending}
-                              onClick={() => handleTargetToggle(row, header, !targeted)}
-                              className={`mb-3 inline-flex w-full items-center justify-center rounded-xl border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] transition ${
-                                targeted
-                                  ? "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                                  : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
-                              }`}
-                            >
-                              {targeted ? "Remove target" : "Mark target"}
-                            </button>
-                          )}
-
-                          <SkillToggleCell
-                            checked={checked}
-                            disabled={isPending}
-                            onChange={(nextChecked) =>
-                              handleCellSave(row, header, nextChecked ? "Completed" : "")
-                            }
-                          />
-                        </div>
-                      );
-                    })}
+                              onChange={(nextChecked) =>
+                                handleCellSave(row, header, nextChecked ? "Completed" : "")
+                              }
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
+                ) : null}
               </article>
             );
           })}
