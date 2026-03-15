@@ -468,11 +468,15 @@ export const createMember = async (values: Record<string, string>) => {
     throw new Error("Email is required.");
   }
 
-  await ensureSettings();
+  await ensureDefaultDetailColumns();
   const setting = await settings.findOne({ key: "portal" });
   const skillHeaders = setting?.skillHeaders ?? [];
   const detailHeaders = setting?.detailHeaders ?? [];
-  const nextValues: Record<string, string> = { ...values, Email: email };
+  const baseValues = BASIC_FIELDS.reduce((accumulator, field) => {
+    accumulator[field] = field === "Reward Points" || field === "Activity Points" ? "0" : "";
+    return accumulator;
+  }, {} as Record<string, string>);
+  const nextValues: Record<string, string> = { ...baseValues, ...values, Email: email };
 
   detailHeaders.forEach((header) => {
     if (!(header in nextValues)) {

@@ -8,16 +8,13 @@ type Props = {
   refreshDataset: (path: string, init?: RequestInit) => Promise<void>;
 };
 
-const EMPTY_MEMBER = {
+const MEMBER_FORM_FIELDS = ["Names", "Email", "Roll Number"] as const;
+type MemberFormKey = (typeof MEMBER_FORM_FIELDS)[number];
+
+const EMPTY_MEMBER: Record<MemberFormKey, string> = {
   Names: "",
-  Position: "",
-  "Phone Number": "",
-  "Special Lab Name": "",
   Email: "",
-  "Roll Number": "",
-  "Google Sheet": "",
-  "Reward Points": "0",
-  "Activity Points": "0"
+  "Roll Number": ""
 };
 
 export function AdminPanel({ dataset, refreshDataset }: Props) {
@@ -85,10 +82,10 @@ export function AdminPanel({ dataset, refreshDataset }: Props) {
         <div className="rounded-3xl border border-portal-line bg-white p-4">
           <h3 className="mb-4 text-base font-semibold text-slate-900">Add Member</h3>
           <div className="grid gap-3 md:grid-cols-2">
-            {Object.entries(memberForm).map(([key, value]) => (
+            {MEMBER_FORM_FIELDS.map((key) => (
               <input
                 key={key}
-                value={value}
+                value={memberForm[key]}
                 onChange={(event) =>
                   setMemberForm((current) => ({
                     ...current,
