@@ -500,7 +500,7 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                 <tbody>
                   {sortedRows.map((row, index) => {
                     const totalCompleted = getCompletedSkillCount(row, dataset.skillHeaders);
-                    const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50/50";
+                    const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
                     const isOwnRow = dataset.userEmail === row.values.Email?.toLowerCase();
                     return (
                       <tr key={`summary-${row.id}`} className={rowBg}>
