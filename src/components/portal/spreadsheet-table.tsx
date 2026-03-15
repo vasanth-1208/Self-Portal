@@ -480,14 +480,16 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
+              <table className="w-max border-separate border-spacing-0 text-left text-sm">
                 <thead className="sticky top-0 bg-white">
                   <tr>
                     {summaryColumns.map((header) => (
                       <th
                         key={header}
-                        className={`whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 font-medium text-slate-700 ${
-                          header === "Names" ? "sticky left-0 z-20 bg-white" : ""
+                        className={`min-w-max whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 align-top font-medium text-slate-700 ${
+                          header === "Names"
+                            ? "sticky left-0 z-20 bg-white shadow-[2px_0_0_0_rgba(226,232,240,1)]"
+                            : ""
                         }`}
                       >
                         {header}
@@ -505,8 +507,10 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                         {summaryColumns.map((header) => (
                           <td
                             key={`${row.id}-${header}`}
-                            className={`whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 text-slate-700 ${
-                              header === "Names" ? `sticky left-0 z-10 ${rowBg}` : ""
+                            className={`min-w-max whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 align-top text-slate-700 ${
+                              header === "Names"
+                                ? `sticky left-0 z-10 ${rowBg} shadow-[2px_0_0_0_rgba(226,232,240,1)]`
+                                : ""
                             }`}
                           >
                             {header === TOTAL_SKILLS_COMPLETED ? (
@@ -525,10 +529,11 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                                   <EditableCell
                                     value={value}
                                     disabled={isPending}
+                                    autoWidth
                                     onSave={(nextValue) => handleCellSave(row, header, nextValue)}
                                   />
                                 ) : (
-                                  <span className="block">{value || "-"}</span>
+                                  <span className="block min-w-max">{value || "-"}</span>
                                 );
                               })()}
                           </td>
@@ -549,17 +554,23 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
 function EditableCell({
   value,
   onSave,
-  disabled
+  disabled,
+  className,
+  autoWidth
 }: {
   value: string;
   onSave: (value: string) => void;
   disabled: boolean;
+  className?: string;
+  autoWidth?: boolean;
 }) {
   const [draft, setDraft] = useState(value);
 
   useEffect(() => {
     setDraft(value);
   }, [value]);
+
+  const widthCh = Math.min(Math.max((draft || value || "-").length + 1, 8), 64);
 
   return (
     <input
@@ -571,7 +582,11 @@ function EditableCell({
         }
       }}
       disabled={disabled}
-      className="w-full rounded-xl border border-transparent bg-transparent px-1 py-1 text-sm text-slate-700 outline-none transition focus:border-amber-200 focus:bg-amber-50 disabled:cursor-not-allowed"
+      size={autoWidth ? widthCh : undefined}
+      style={autoWidth ? { width: `${widthCh}ch` } : undefined}
+      className={`rounded-xl border border-transparent bg-transparent px-1 py-1 text-sm text-slate-700 outline-none transition focus:border-amber-200 focus:bg-amber-50 disabled:cursor-not-allowed ${
+        autoWidth ? "min-w-max" : "w-full"
+      } ${className || ""}`.trim()}
     />
   );
 }
