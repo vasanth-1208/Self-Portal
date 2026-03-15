@@ -108,6 +108,10 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
   };
 
   const handleDeleteSkill = (header: string) => {
+    if (!window.confirm(`Delete skill column "${header}" for everyone?`)) {
+      return;
+    }
+
     startTransition(async () => {
       await refreshDataset("/api/portal/skills", {
         method: "DELETE",
@@ -117,6 +121,10 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
   };
 
   const handleDeleteDetail = (header: string) => {
+    if (!window.confirm(`Delete detail column "${header}" for everyone?`)) {
+      return;
+    }
+
     startTransition(async () => {
       await refreshDataset("/api/portal/details", {
         method: "DELETE",
@@ -393,11 +401,11 @@ function SkillToggleCell({
       onClick={() => onChange(!checked)}
       className={`inline-flex w-full items-center justify-center rounded-xl border px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] transition ${
         checked
-          ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
-          : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100"
+          ? "border-emerald-900 bg-emerald-800 text-white hover:bg-emerald-900"
+          : "border-rose-900 bg-rose-800 text-white hover:bg-rose-900"
       } ${disabled ? "cursor-not-allowed opacity-60" : ""}`}
     >
-      {checked ? "Completed" : "Pending"}
+      {checked ? "Completed" : "Not Completed"}
     </button>
   );
 }

@@ -45,6 +45,10 @@ export function AdminPanel({ dataset, refreshDataset }: Props) {
   };
 
   const handleRemove = (targetEmail: string) => {
+    if (!window.confirm(`Remove admin access for ${targetEmail}?`)) {
+      return;
+    }
+
     startTransition(async () => {
       await refreshDataset("/api/portal/admins", {
         method: "DELETE",
