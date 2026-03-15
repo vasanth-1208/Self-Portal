@@ -26,6 +26,36 @@ const getCompletedSkillCount = (row: StudentRow, skillHeaders: string[]) =>
     0
   );
 
+const TOTAL_SKILLS_COMPLETED = "Total Skills Completed";
+
+const getPositionSortKey = (positionRaw: string) => {
+  const position = `${positionRaw || ""}`.toLowerCase();
+
+  if (position.includes("team leader") || (position.includes("captain") && !position.includes("vice"))) {
+    return { rank: 0, memberNumber: 0, label: position };
+  }
+
+  if (position.includes("vice")) {
+    return { rank: 1, memberNumber: 0, label: position };
+  }
+
+  if (position.includes("manager")) {
+    return { rank: 2, memberNumber: 0, label: position };
+  }
+
+  if (position.includes("strategist")) {
+    return { rank: 3, memberNumber: 0, label: position };
+  }
+
+  if (position.includes("team member")) {
+    const match = position.match(/team member\s*-\s*(\d+)/);
+    const memberNumber = match ? Number(match[1]) : 9999;
+    return { rank: 4, memberNumber, label: position };
+  }
+
+  return { rank: 999, memberNumber: 0, label: position };
+};
+
 const SUMMARY_DETAIL_FIELDS = [
   "Names",
   "Position",
@@ -35,6 +65,7 @@ const SUMMARY_DETAIL_FIELDS = [
   "Roll Number",
   "Reward Points",
   "Activity Points",
+  TOTAL_SKILLS_COMPLETED,
   "Github",
   "Linkedin",
   "Primary Skill 1",
@@ -67,12 +98,20 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
   }, [isPersonalView]);
 
   const sortedRows = rows.slice().sort((left, right) => {
-    const positionCompare = `${left.values.Position || ""}`.localeCompare(
-      `${right.values.Position || ""}`
-    );
+    const leftKey = getPositionSortKey(left.values.Position || "");
+    const rightKey = getPositionSortKey(right.values.Position || "");
 
-    if (positionCompare !== 0) {
-      return positionCompare;
+    if (leftKey.rank !== rightKey.rank) {
+      return leftKey.rank - rightKey.rank;
+    }
+
+    if (leftKey.memberNumber !== rightKey.memberNumber) {
+      return leftKey.memberNumber - rightKey.memberNumber;
+    }
+
+    const labelCompare = leftKey.label.localeCompare(rightKey.label);
+    if (labelCompare !== 0) {
+      return labelCompare;
     }
 
     return `${left.values.Names || ""}`.localeCompare(`${right.values.Names || ""}`);
@@ -279,7 +318,7 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                           >
                             ▼
                           </span>
-                          {isExpanded ? "Hide skills" : "Show skills"}
+                          {isExpanded ? "Hide details" : "Show details"}
                         </button>
                       ) : null}
                       {dataset.role === "super_admin" && dataset.teamViewLoaded && (
@@ -444,16 +483,12 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
               <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
                 <thead className="sticky top-0 bg-white">
                   <tr>
-                    <th className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 font-medium text-slate-700">
-                      #
-                    </th>
-                    <th className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 font-medium text-slate-700">
-                      Total Skills Completed
-                    </th>
                     {summaryColumns.map((header) => (
                       <th
                         key={header}
-                        className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 font-medium text-slate-700"
+                        className={`whitespace-nowrap border-b border-r border-slate-200 px-4 py-3 font-medium text-slate-700 ${
+                          header === "Names" ? "sticky left-0 z-20 bg-white" : ""
+                        }`}
                       >
                         {header}
                       </th>
@@ -463,20 +498,39 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                 <tbody>
                   {sortedRows.map((row, index) => {
                     const totalCompleted = getCompletedSkillCount(row, dataset.skillHeaders);
+                    const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50/50";
+                    const isOwnRow = dataset.userEmail === row.values.Email?.toLowerCase();
                     return (
-                      <tr key={`summary-${row.id}`} className="odd:bg-white even:bg-slate-50/50">
-                        <td className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 text-slate-600">
-                          {index + 1}
-                        </td>
-                        <td className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 font-medium text-slate-800">
-                          {totalCompleted}
-                        </td>
+                      <tr key={`summary-${row.id}`} className={rowBg}>
                         {summaryColumns.map((header) => (
                           <td
                             key={`${row.id}-${header}`}
-                            className="whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 text-slate-700"
+                            className={`whitespace-nowrap border-b border-r border-slate-200 px-4 py-2 text-slate-700 ${
+                              header === "Names" ? `sticky left-0 z-10 ${rowBg}` : ""
+                            }`}
                           >
-                            {row.values[header] || "-"}
+                            {header === TOTAL_SKILLS_COMPLETED ? (
+                              <span className="font-medium text-slate-800">{totalCompleted}</span>
+                            ) : (() => {
+                                const value = row.values[header] || "";
+                                const fieldEditable =
+                                  (dataset.teamViewLoaded &&
+                                    (dataset.role === "super_admin" || dataset.role === "admin") &&
+                                    header !== "Reward Points") ||
+                                  (isOwnRow &&
+                                    ((dataset.role === "member" && header === "Activity Points") ||
+                                      dataset.detailHeaders.includes(header)));
+
+                                return fieldEditable ? (
+                                  <EditableCell
+                                    value={value}
+                                    disabled={isPending}
+                                    onSave={(nextValue) => handleCellSave(row, header, nextValue)}
+                                  />
+                                ) : (
+                                  <span className="block">{value || "-"}</span>
+                                );
+                              })()}
                           </td>
                         ))}
                       </tr>
