@@ -29,6 +29,7 @@ const getCompletedSkillCount = (row: StudentRow, skillHeaders: string[]) =>
 const TOTAL_SKILLS_COMPLETED = "Total Skills Completed";
 const CURRENT_TARGETS = "Current Targets";
 const TARGETS_COMPLETED = "Targets completed";
+const TARGETS_PROGRESS = "Count of Targets Completed";
 
 const normalizeLocalEmail = (value: string) => `${value || ""}`.trim().toLowerCase();
 
@@ -72,6 +73,7 @@ const SUMMARY_DETAIL_FIELDS = [
   TOTAL_SKILLS_COMPLETED,
   CURRENT_TARGETS,
   TARGETS_COMPLETED,
+  TARGETS_PROGRESS,
   "Github",
   "Linkedin",
   "Primary Skill 1",
@@ -282,6 +284,15 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
             const isOwnRow = normalizeLocalEmail(dataset.userEmail) === normalizeLocalEmail(row.values.Email || "");
             const visibleSkills = dataset.skillHeaders;
             const completedSkillCount = getCompletedSkillCount(row, dataset.skillHeaders);
+            const totalTargets = row.targetSkills.length;
+            const completedTargets = row.targetSkills.filter((header) =>
+              isSkillCompleted(row.values[header] || "")
+            ).length;
+            const currentTargets = row.targetSkills.join(", ");
+            const targetsCompleted = row.targetSkills
+              .filter((header) => isSkillCompleted(row.values[header] || ""))
+              .join(", ");
+            const targetsProgress = `${completedTargets}/${totalTargets}`;
             const isAccordion = !isPersonalView;
             const isExpanded = !isAccordion || expandedRowId === row.id;
 
@@ -347,6 +358,28 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                         </p>
                         <span className="block text-sm font-semibold text-emerald-800">
                           {completedSkillCount}
+                        </span>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          {TARGETS_PROGRESS}
+                        </p>
+                        <span className="block text-sm font-semibold text-slate-800">
+                          {targetsProgress}
+                        </span>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          {CURRENT_TARGETS}
+                        </p>
+                        <span className="block text-sm text-slate-700">{currentTargets || "-"}</span>
+                      </div>
+                      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
+                        <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
+                          {TARGETS_COMPLETED}
+                        </p>
+                        <span className="block text-sm text-slate-700">
+                          {targetsCompleted || "-"}
                         </span>
                       </div>
                       {[...DETAIL_FIELDS, ...dataset.detailHeaders].map((field) => {
@@ -510,10 +543,15 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                     const isOwnRow =
                       normalizeLocalEmail(dataset.userEmail) ===
                       normalizeLocalEmail(row.values.Email || "");
-                    const currentTargets = (row.targetSkills || []).join(", ");
-                    const targetsCompleted = (row.targetSkills || [])
+                    const totalTargets = row.targetSkills.length;
+                    const completedTargets = row.targetSkills.filter((header) =>
+                      isSkillCompleted(row.values[header] || "")
+                    ).length;
+                    const currentTargets = row.targetSkills.join(", ");
+                    const targetsCompleted = row.targetSkills
                       .filter((header) => isSkillCompleted(row.values[header] || ""))
                       .join(", ");
+                    const targetsProgress = `${completedTargets}/${totalTargets}`;
                     return (
                       <tr key={`summary-${row.id}`} className={rowBg}>
                         {summaryColumns.map((header) => (
@@ -531,6 +569,10 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                               <span className="block min-w-max">{currentTargets || "-"}</span>
                             ) : header === TARGETS_COMPLETED ? (
                               <span className="block min-w-max">{targetsCompleted || "-"}</span>
+                            ) : header === TARGETS_PROGRESS ? (
+                              <span className="block min-w-max font-medium text-slate-800">
+                                {targetsProgress}
+                              </span>
                             ) : (() => {
                                 const value = row.values[header] || "";
                                 const fieldEditable =
