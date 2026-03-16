@@ -27,6 +27,10 @@ const getCompletedSkillCount = (row: StudentRow, skillHeaders: string[]) =>
   );
 
 const TOTAL_SKILLS_COMPLETED = "Total Skills Completed";
+const CURRENT_TARGETS = "Current Targets";
+const TARGETS_COMPLETED = "Targets completed";
+
+const normalizeLocalEmail = (value: string) => `${value || ""}`.trim().toLowerCase();
 
 const getPositionSortKey = (positionRaw: string) => {
   const position = `${positionRaw || ""}`.toLowerCase();
@@ -66,6 +70,8 @@ const SUMMARY_DETAIL_FIELDS = [
   "Reward Points",
   "Activity Points",
   TOTAL_SKILLS_COMPLETED,
+  CURRENT_TARGETS,
+  TARGETS_COMPLETED,
   "Github",
   "Linkedin",
   "Primary Skill 1",
@@ -273,7 +279,7 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
       <div className="p-4 md:p-5">
         <div className="space-y-5">
           {sortedRows.map((row, rowIndex) => {
-            const isOwnRow = dataset.userEmail === row.values.Email?.toLowerCase();
+            const isOwnRow = normalizeLocalEmail(dataset.userEmail) === normalizeLocalEmail(row.values.Email || "");
             const visibleSkills = dataset.skillHeaders;
             const completedSkillCount = getCompletedSkillCount(row, dataset.skillHeaders);
             const isAccordion = !isPersonalView;
@@ -346,13 +352,13 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                       {[...DETAIL_FIELDS, ...dataset.detailHeaders].map((field) => {
                         const value = row.values[field] || "";
                         const isCustomDetail = dataset.detailHeaders.includes(field);
+                        const canEditOwnActivity = isOwnRow && field === "Activity Points";
                         const fieldEditable =
                           (dataset.teamViewLoaded &&
                             (dataset.role === "super_admin" || dataset.role === "admin") &&
                             field !== "Reward Points") ||
-                          (isOwnRow &&
-                            ((dataset.role === "member" && field === "Activity Points") ||
-                              dataset.detailHeaders.includes(field)));
+                          canEditOwnActivity ||
+                          (isOwnRow && dataset.detailHeaders.includes(field));
 
                         return (
                           <div
@@ -501,7 +507,13 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                   {sortedRows.map((row, index) => {
                     const totalCompleted = getCompletedSkillCount(row, dataset.skillHeaders);
                     const rowBg = index % 2 === 0 ? "bg-white" : "bg-slate-50";
-                    const isOwnRow = dataset.userEmail === row.values.Email?.toLowerCase();
+                    const isOwnRow =
+                      normalizeLocalEmail(dataset.userEmail) ===
+                      normalizeLocalEmail(row.values.Email || "");
+                    const currentTargets = (row.targetSkills || []).join(", ");
+                    const targetsCompleted = (row.targetSkills || [])
+                      .filter((header) => isSkillCompleted(row.values[header] || ""))
+                      .join(", ");
                     return (
                       <tr key={`summary-${row.id}`} className={rowBg}>
                         {summaryColumns.map((header) => (
@@ -515,6 +527,10 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                           >
                             {header === TOTAL_SKILLS_COMPLETED ? (
                               <span className="font-medium text-slate-800">{totalCompleted}</span>
+                            ) : header === CURRENT_TARGETS ? (
+                              <span className="block min-w-max">{currentTargets || "-"}</span>
+                            ) : header === TARGETS_COMPLETED ? (
+                              <span className="block min-w-max">{targetsCompleted || "-"}</span>
                             ) : (() => {
                                 const value = row.values[header] || "";
                                 const fieldEditable =
@@ -522,7 +538,7 @@ export function SpreadsheetTable({ dataset, refreshDataset }: Props) {
                                     (dataset.role === "super_admin" || dataset.role === "admin") &&
                                     header !== "Reward Points") ||
                                   (isOwnRow &&
-                                    ((dataset.role === "member" && header === "Activity Points") ||
+                                    (header === "Activity Points" ||
                                       dataset.detailHeaders.includes(header)));
 
                                 return fieldEditable ? (
